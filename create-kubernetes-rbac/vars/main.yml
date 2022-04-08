@@ -1,0 +1,38 @@
+---
+# --------------------------------------
+# -- K8s username
+# --------------------------------------
+username: "admin"
+# --------------------------------------
+# -- How many days certificate 
+# -- will be valid
+# --------------------------------------
+certificate_expires_in: 500
+# --------------------------------------
+# -- K8s cluster name
+# --------------------------------------
+cluster: "microk8s-cluster"
+# --------------------------------------
+# -- RoleBinding parameters
+# --------------------------------------
+# -- Binding type: 
+# ---- ClusterRoleBinding
+# ---- RoleBinding
+# --------------------------------------
+binding_type: ClusterRoleBinding
+# --------------------------------------
+# -- Role type
+# -- ClusterRole
+# -- Role
+# --------------------------------------
+role_type: ClusterRole
+# --------------------------------------
+# -- Cluster role name
+# -- https://kubernetes.io/docs/reference/access-authn-authz/rbac/
+# --------------------------------------
+role: cluster-admin
+# --------------------------------------
+# -- Uncomment if you use microk8s
+# --------------------------------------
+# k8s_config_path: /var/snap/microk8s/current/credentials/client.config 
+# k8s_cert_path: /var/snap/microk8s/current/certs

@@ -1,0 +1,44 @@
+# --------------------------------------
+# -- Prepare system
+# -- for containerd installation
+# --------------------------------------
+# -- Implemeneted:
+# ---- Debian
+# --------------------------------------
+---
+# --------------------------------------
+# -- Debian
+# --------------------------------------
+- name: Prepare Debian
+  block:
+    - name: Add the overlay and br_netfilter modules
+      modprobe:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - "overlay"
+        - "br_netfilter"
+
+    - name: Ensure dependencies are installed.
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - gnupg2
+        state: present
+
+    - name: Add Docker apt key.
+      apt_key:
+        url: "{{ docker_apt_gpg_key }}"
+        id: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+        state: present
+      register: add_repository_key
+      ignore_errors: "{{ docker_apt_ignore_key_error }}"
+
+    - name: Add Docker repository.
+      apt_repository:
+        repo: "{{ docker_apt_repository }}"
+        state: present
+        update_cache: true
+  tags: init, cri, system
+  when: ansible_os_family == 'Debian'

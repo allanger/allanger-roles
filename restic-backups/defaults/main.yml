@@ -1,0 +1,30 @@
+---
+# -- If this var is true, restic will do self-update
+restic_self_update: true
+
+# -- Restic will not delete the n last snapshots
+restic_keep_last: 7
+
+# -- Parameters for restic backup cronjob
+restic_cron_params:
+  name: restic_backup
+  weekday: "*"
+  minute: "0"
+  hour: "0"
+  user: root
+
+# -- Path to dirs that need to be backed up
+restic_backup_dirs:
+  - /home
+  - /var
+
+# -- Restic password. You should set your own password
+vault_restic_password:
+
+# -- Restic release url
+restic_release_version: "v0.12.1"
+restic_release_url: "https://github.com/restic/restic/releases/download/{{ restic_release_version }}/restic_0.12.1_linux_amd64.bz2"
+restic_checksum_url: "https://github.com/restic/restic/releases/download/{{ restic_release_version }}/SHA256SUMS"
+
+# -- Path to install restic
+restic_path: /usr/bin/restic

@@ -1,0 +1,20 @@
+# --------------------------------------
+# -- Init k8s cluster
+# --------------------------------------
+# -- Install container runtime 
+# -- Init master node and get config file for joining
+# -- Join servants nodes
+# --------------------------------------
+---
+# --------------------------------------
+# -- Install container runtime
+# --------------------------------------
+- name: Install container runtime
+  include_tasks: ./container-runtime/container-runtime.yaml
+  tags: init, cri
+# --------------------------------------
+# -- Install kubernetes dependencies
+# --------------------------------------
+- name: Install kubernetes
+  include_tasks: ./kubernetes/kubernetes.yaml
+  tags: init, kubernetes

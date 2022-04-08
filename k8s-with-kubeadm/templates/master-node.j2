@@ -1,0 +1,36 @@
+---
+apiVersion: kubeadm.k8s.io/v1beta2
+kind: InitConfiguration
+localAPIEndpoint:  
+  advertiseAddress:  {{ kubernetes_apiserver_advertise_address }}
+  bindPort: 6443  
+nodeRegistration:
+  name: {{ ansible_hostname }}
+  taints:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+
+---
+apiServer:
+  timeoutForControlPlane: 4m0s
+apiVersion: kubeadm.k8s.io/v1beta2
+clusterName: {{ kubernetes_cluster_name }}
+controllerManager: {}
+dns:
+  type: CoreDNS
+etcd:
+  local:
+    dataDir: /var/lib/etcd
+controlPlaneEndpoint: {{ kubernetes_control_plane_endpoint }}:6443
+kind: ClusterConfiguration
+kubernetesVersion: {{ kubernetes_version }}
+networking:
+  dnsDomain: cluster.local
+  podSubnet: 10.244.0.0/16
+  serviceSubnet: 10.96.0.0/12
+scheduler: {}
+
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+cgroupDriver: systemd

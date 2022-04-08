@@ -1,0 +1,36 @@
+---
+# --------------------------------------
+# -- Install and run UFW
+# --------------------------------------
+- name: Ensure ufw is installed.
+  package:
+    name: ufw
+    state: present
+
+- name: Ensure ufw is started and enabled at boot.
+  service:
+    name: ufw
+    state: started
+    enabled: true
+
+- name: Set default rule
+  community.general.ufw:
+    default: "{{ default_rule }}"
+
+- name: Setup rules from variables
+  community.general.ufw:
+    name: "{{ item.name | default(omit) }}"
+    rule: "{{ item.rule | default(omit) }}"
+    interface: "{{ item.interface | default(omit) }}"
+    direction: "{{ item.direction | default(omit) }}"
+    proto: "{{ item.proto | default(omit) }}"
+    src: "{{ item.src | default(omit) }}"
+    from_port: "{{ item.from_port | default(omit) }}"
+    dest: "{{ item.dest | default(omit) }}"
+    to_port: "{{ item.to_port | default(omit) }}"
+  with_items: "{{ rules }}"
+
+- name: Enable firewall
+  community.general.ufw:
+    state: enabled
+

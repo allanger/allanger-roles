@@ -1,0 +1,119 @@
+---
+- name: Include vault file
+  include_vars:
+    file: "vault/vault.yml"
+
+- name: Install and setup restic backups
+  when: restic_password | length > 0
+  become: yes
+  block:
+    - name: Check if restic is installed
+      register: restic_installed
+      stat:
+        path: "{{ restic_path }}"
+
+    - name: Install restic
+      when: not restic_installed.stat.exists
+      block:
+        - name: Download restic
+          register: restic_downloaded
+          get_url:
+            url: "{{ restic_release_url }}"
+            dest: /tmp/restic.bz2
+            checksum: "sha256:{{ restic_checksum_url }}"
+
+        - name: Install bzip2
+          register: bzip2_installed
+          package:
+            state: present
+            name:
+              - bzip2
+
+        - name: Extract restic
+          command: bzip2 -d /tmp/restic.bz2
+          args:
+            creates: /tmp/restic
+
+        - name: Copy restic to executables dir
+          copy:
+            remote_src: True
+            src: /tmp/restic
+            dest: "{{ restic_path }}"
+
+        - name: Remove restic from tmp
+          file:
+            path: /tmp/restic
+            state: absent
+
+        - name: Give executable permission to restic
+          ansible.builtin.file:
+            path: "{{ restic_path }}"
+            mode: 0755
+
+        - name: Remove bzip2 if it was installed by this role
+          when: bzip2_installed.changed
+          package:
+            state: absent
+            name:
+              - bzip2
+
+    - name: Setup restic
+      block:
+        # -----------------------------------------------
+        # -- If restic cat config exits with status != 0,
+        # -- it means that repo is not configured, so
+        # -- we need to create new repo.
+        # -- If it's 0, then just skip init repo step
+        # -----------------------------------------------
+        - name: Check if repo already exists
+          command: "restic cat config"
+          register: restic_initialized
+          ignore_errors: yes
+
+        - name: Init repo
+          command: restic init --verbose=3
+          when: restic_initialized.failed
+
+      environment:
+        RESTIC_REPOSITORY: "{{ restic_repository }}"
+        RESTIC_PASSWORD: "{{ restic_password }}"
+        AWS_ACCESS_KEY_ID: "{{ aws_access_key_id }}"
+        AWS_SECRET_ACCESS_KEY: "{{ aws_secret_access_key }}"
+
+    - name: Copy restic_backup script
+      copy:
+        src: restic_backup
+        dest: /usr/bin/restic_backup
+        owner: root
+        group: root
+        mode: 0755
+
+    - name: Setup cronjob
+      block:
+        - name: Add environment variables to the cron job
+          ansible.builtin.cron:
+            name: "{{ item.name }}"
+            env: yes
+            state: present
+            user: root
+            value: "{{ item.value }}"
+            cron_file: restic_backup
+          loop:
+            - { name: "RESTIC_REPOSITORY", value: "{{ restic_repository }}" }
+            - { name: "RESTIC_PASSWORD", value: "{{ restic_password }}" }
+            - { name: "RESTIC_KEEP_LAST", value: "{{ restic_keep_last }}" }
+            - { name: "AWS_ACCESS_KEY_ID", value: "{{ aws_access_key_id }}" }
+            - {
+                name: "AWS_SECRET_ACCESS_KEY",
+                value: "{{ aws_secret_access_key }}",
+              }
+
+        - name: create a cronjob
+          ansible.builtin.cron:
+            name: "{{ restic_cron_params.name }}"
+            weekday: "{{ restic_cron_params.weekday }}"
+            minute: "{{ restic_cron_params.minute }}"
+            hour: "{{ restic_cron_params.hour }}"
+            user: "{{ restic_cron_params.user }}"
+            job: "/usr/bin/restic_backup {{ restic_backup_dirs | join(' ') }}"
+            cron_file: "{{ restic_cron_params.name }}"

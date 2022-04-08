@@ -1,0 +1,8 @@
+# --------------------------------------
+# -- Initialize kubernetes cluster
+# --------------------------------------
+---
+- hosts: k8s_master
+  become: no
+  roles:
+    - role: '.'

@@ -1,0 +1,20 @@
+---
+- name: Setup restic backups
+  vars:
+    restic_not_google_vm: false
+    project_id: "google_cloud_project_id"
+    restic_repository: "gs:bucket_name:/bucket_path"
+    restic_keep_last: 7
+    restic_backup_dirs:
+      - /path/to/dir
+      - /another/path/to/dir
+    restic_cron_params:
+      name: restic_backup
+      weekday: "*"
+      minute: "30"
+      hour: "*"
+      user: root
+
+  hosts: all
+  roles:
+    - role: "."

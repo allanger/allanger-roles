@@ -1,0 +1,14 @@
+#!/bin/bash
+set -eu
+set -o pipefail
+# -----------------------------------------------
+# -- Backup with restic
+# -----------------------------------------------
+# -- Logic:
+# -- 1. Do a backup with restic
+# -----------------------------------------------
+restic backup $@ --json | jq 'select(.message_type == "summary")'
+# -----------------------------------------------
+# -- 2. Remove old backups
+# -----------------------------------------------
+restic forget --keep-last $RESTIC_KEEP_LAST --prune

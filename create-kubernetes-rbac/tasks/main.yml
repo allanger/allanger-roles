@@ -1,0 +1,151 @@
+# --------------------------------------
+# -- Create kubernetes user
+# --------------------------------------
+# -- 1. Install packages
+# -- 2. Generate certificate
+# -- 3. Add user to kubernetes
+# -- 4. Remove certificates (Optional)
+# --------------------------------------
+---
+- name: Prepare working directory
+  block:
+    - name: Set workdir as fact
+      set_fact:
+        working_dir: "{{ ansible_env.HOME }}/.certs/{{ username }}"
+
+    - name: Create a directory if it does not exist
+      ansible.builtin.file:
+        path: "{{ working_dir }}"
+        state: directory
+        mode: "0775"
+
+- name: Ensure required packages are installed
+  block:
+  # -------------------------
+  # -- Prepare kubectl repo
+  # -------------------------
+    - name: Add an apt signing key for Kubernetes
+      become: yes
+      apt_key:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        state: present
+
+    - name: Adding apt repository for Kubernetes
+      become: yes
+      apt_repository:
+        repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+        state: present
+        filename: kubernetes.list
+
+    # --------------------------------------
+    # -- yq is a lightweight and portable
+    # -- command-line YAML processor
+    # --------------------------------------
+    - name: Ensure yq is installed
+      become: yes
+      get_url:
+        url: "https://github.com/mikefarah/yq/releases/download/{{ yq.version }}/{{ yq.binary }}"
+        dest: /usr/bin/yq
+        mode: "0777"
+
+    - name: Ensure kubectl and openssl are installed
+      become: yes
+      package:
+        name: "{{ packages }}"
+        state: present
+      vars: 
+        packages:
+          - kubectl
+          - openssl
+  tags: packages
+
+- name: Generate openssl certificate
+  block:
+    - name: Generate an OpenSSL private key
+      community.crypto.openssl_privatekey:
+        path: "{{ working_dir }}/{{ username }}.key"
+        size: 2048
+
+    - name: Generate an OpenSSL Certificate Signing Request
+      community.crypto.openssl_csr:
+        path: "{{ working_dir }}/{{ username }}.csr"
+        privatekey_path: "{{ working_dir }}/{{ username }}.key"
+        common_name: "{{ username }}"
+
+    - name: Generate an OpenSSL certificate signed with your own CA certificate
+      become: yes
+      community.crypto.x509_certificate:
+        path: "{{ working_dir }}/{{ username }}.crt"
+        csr_path: "{{ working_dir }}/{{ username }}.csr"
+        ownca_path: "{{ k8s_cert_path }}/ca.crt"
+        ownca_privatekey_path: "{{ k8s_cert_path }}/ca.key"
+        provider: ownca
+        entrust_not_after: "+{{ certificate_expires_in }}d"
+
+  tags: openssl
+
+- name: Add user to cluster
+  block:
+    # --------------------------------------
+    # -- Get k8s server from admin.conf
+    # --------------------------------------
+    - name: Get k8s server
+      shell: yq e '.clusters[0] | select(.name == "{{ cluster }}").cluster.server' "{{ k8s_config_path }}"
+      register: kubernetes_server_output
+    # --------------------------------------
+    # -- Get k8s certificate authority data
+    # -- from admin-conf
+    # --------------------------------------
+    - name: Get k8s certificate authority data
+      shell: yq e '.clusters[0] | select(.name == "{{ cluster }}").cluster.certificate-authority-data' "{{ k8s_config_path }}"
+      register: kubernetes_cad_output
+
+    - name: Get user cert data
+      shell: cat "{{ working_dir }}/{{ username }}.crt" | base64 -w 0
+      register: user_cert_data_output
+
+    - name: Get user key data
+      shell: cat "{{ working_dir }}/{{ username }}.key" | base64 -w 0
+      register: user_key_data_output
+
+    - name: Set variables for template
+      set_fact:
+        kubernetes_server: "{{ kubernetes_server_output.stdout }}"
+        kubernetes_cad: "{{ kubernetes_cad_output.stdout }}"
+        user_cert_data: " {{ user_cert_data_output.stdout }}"
+        user_key_data: " {{ user_key_data_output.stdout }}"
+
+    - name: Create k8s user
+      ansible.builtin.shell: |
+        kubectl config set-credentials  "{{ username }}"\
+          --client-certificate="{{ working_dir }}/{{ username }}.crt" \
+          --client-key="{{ working_dir }}/{{ username }}.key"
+      notify: remove certificates
+
+    - name: Set user context
+      ansible.builtin.shell: |
+        kubectl config set-context "{{ username }}@{{ cluster }}" \
+          --cluster={{ cluster }} --user="{{ username }}"
+
+    - name: Create config file from template
+      template:
+        src: config.j2
+        dest: "{{ working_dir }}/config"
+
+    - name: Storing config on the local machine
+      ansible.builtin.fetch:
+        src: "{{ working_dir }}/config"
+        dest: ./
+        flat: yes
+  tags: config
+
+- name: Bind user to role
+  block:
+    - name: Generate role binding yaml
+      template:
+        src: role-binding.j2
+        dest: "{{ working_dir }}/{{ username }}.yaml"
+
+    - name: Apply role binding manifest
+      shell: kubectl apply -f "{{ working_dir }}/{{ username }}.yaml"
+  tags: add_user

@@ -1,0 +1,10 @@
+image: alpine:3.12
+
+stages:
+  - test
+
+lint:
+  stage: test
+  script:
+    - apk add --update ansible-lint --no-cache
+    - ansible-lint -p ${CI_PROJECT_DIR}/playbook.yaml

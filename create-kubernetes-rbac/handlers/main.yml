@@ -1,0 +1,5 @@
+---
+- name: remove certificates
+  file:
+    state: absent
+    path: "{{ working_dir }}"

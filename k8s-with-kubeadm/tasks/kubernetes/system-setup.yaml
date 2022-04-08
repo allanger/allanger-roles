@@ -1,0 +1,34 @@
+# --------------------------------------
+# -- Prepare system
+# -- for kubernetes installation
+# --------------------------------------
+# -- Implemeneted:
+# ---- Debian
+# --------------------------------------
+---
+# --------------------------------------
+# -- Debian
+# --------------------------------------
+- name: Prepare Debian
+  block:
+    - name: Ensure dependencies are installed.
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+        state: present
+
+    - name: Add Kubernetes apt key.
+      apt_key:
+        url: "{{ kubernetes_apt_gpg_key }}"
+        state: present
+      register: add_repository_key
+
+    - name: Add Kubernetes repository.
+      apt_repository:
+        repo: "{{ kubernetes_apt_repository }}"
+        state: present
+        update_cache: true
+
+  when: ansible_os_family == 'Debian'

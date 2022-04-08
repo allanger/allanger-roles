@@ -1,0 +1,19 @@
+galaxy_info:
+  author: Allen Languor
+  description: init kubernetes cluster with kubeadm
+  company: BadHouseplants
+
+  license: license (GPL-2.0-or-later, MIT, etc)
+
+  min_ansible_version: 2.1
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - 20.04
+        - 18.04
+
+  galaxy_tags:
+    - kubernetes
+    - kubeadm
+    - ubuntu server
