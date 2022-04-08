@@ -7,7 +7,7 @@ set -o pipefail
 # -- Logic:
 # -- 1. Do a backup with restic
 # -----------------------------------------------
-restic backup $@ --json | jq 'select(.message_type == "summary")'
+restic backup $@
 # -----------------------------------------------
 # -- 2. Remove old backups
 # -----------------------------------------------
