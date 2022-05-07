@@ -1,8 +1,4 @@
 ---
-- name: Include vault file
-  include_vars:
-    file: "vault/vault.yml"
-
 - name: Install and setup restic backups
   when: restic_password | length > 0
   become: yes
@@ -97,7 +93,7 @@
             state: present
             user: root
             value: "{{ item.value }}"
-            cron_file: restic_backup
+            cron_file: "{{ restic_cron_params.name }}"
           loop:
             - { name: "RESTIC_REPOSITORY", value: "{{ restic_repository }}" }
             - { name: "RESTIC_PASSWORD", value: "{{ restic_password }}" }
